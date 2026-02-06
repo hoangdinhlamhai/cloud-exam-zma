@@ -3,12 +3,17 @@ import {
   AnimationRoutes,
   App,
   Route,
-  SnackbarProvider,
+  SnackbarProvider as ZMPSnackbarProvider,
   ZMPRouter,
 } from "zmp-ui";
+
+const SnackbarProvider = ZMPSnackbarProvider as any;
 import { AppProps } from "zmp-ui/app";
 
-import HomePage from "@/pages/index";
+import LandingPage from "@/pages/index";
+import LoginPage from "@/pages/login";
+import RegisterPage from "@/pages/register";
+import DashboardPage from "@/pages/home";
 
 const Layout = () => {
   return (
@@ -16,7 +21,10 @@ const Layout = () => {
       <SnackbarProvider>
         <ZMPRouter>
           <AnimationRoutes>
-            <Route path="/" element={<HomePage />}></Route>
+            <Route path="/" element={<LandingPage />}></Route>
+            <Route path="/login" element={<LoginPage />}></Route>
+            <Route path="/register" element={<RegisterPage />}></Route>
+            <Route path="/home" element={<DashboardPage />}></Route>
           </AnimationRoutes>
         </ZMPRouter>
       </SnackbarProvider>
