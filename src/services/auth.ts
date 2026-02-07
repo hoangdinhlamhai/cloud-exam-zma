@@ -1,4 +1,4 @@
-const API_URL = "http://localhost:3000/api";
+const API_URL = "http://localhost:3001/api";
 
 // Helper to safely parse JSON response
 const parseResponse = async (response: Response) => {

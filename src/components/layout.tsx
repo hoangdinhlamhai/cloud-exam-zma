@@ -14,6 +14,7 @@ import LandingPage from "@/pages/index";
 import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/home";
+import CoursesPage from "@/pages/courses";
 
 const Layout = () => {
   return (
@@ -25,6 +26,7 @@ const Layout = () => {
             <Route path="/login" element={<LoginPage />}></Route>
             <Route path="/register" element={<RegisterPage />}></Route>
             <Route path="/home" element={<DashboardPage />}></Route>
+            <Route path="/courses" element={<CoursesPage />}></Route>
           </AnimationRoutes>
         </ZMPRouter>
       </SnackbarProvider>

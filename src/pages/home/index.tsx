@@ -10,6 +10,7 @@ const menuItems = [
         desc: "Lộ trình AWS, Azure...",
         color: "from-orange-400 to-amber-500",
         shadow: "shadow-orange-500/20",
+        route: "/certs",
     },
     {
         key: "courses",
@@ -18,6 +19,7 @@ const menuItems = [
         desc: "Luyện tập không giới hạn",
         color: "from-blue-400 to-indigo-500",
         shadow: "shadow-blue-500/20",
+        route: "/courses",
     },
     {
         key: "exams",
@@ -26,6 +28,7 @@ const menuItems = [
         desc: "Luyện thi thử",
         color: "from-cyan-400 to-teal-500",
         shadow: "shadow-cyan-500/20",
+        route: "/exams",
     },
     {
         key: "history",
@@ -34,6 +37,7 @@ const menuItems = [
         desc: "Kết quả luyện tập",
         color: "from-purple-400 to-pink-500",
         shadow: "shadow-purple-500/20",
+        route: "/history",
     },
     {
         key: "notes",
@@ -42,6 +46,7 @@ const menuItems = [
         desc: "Sổ tay kiến thức",
         color: "from-emerald-400 to-green-500",
         shadow: "shadow-emerald-500/20",
+        route: "/notes",
     },
 ] as const;
 
@@ -106,7 +111,7 @@ const HomePage = () => {
                         <div
                             key={idx}
                             className={`bg-slate-800/40 border border-white/5 p-4 rounded-2xl flex flex-col gap-3 group active:scale-95 transition-all duration-200 cursor-pointer ${idx === 0 ? 'col-span-2 flex-row items-center' : ''}`}
-                            onClick={() => console.log(`Navigate to ${item.key}`)}
+                            onClick={() => navigate(item.route)}
                         >
                             <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.color} ${item.shadow} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
                                 <Icon icon={item.icon} className="text-white text-xl" />
