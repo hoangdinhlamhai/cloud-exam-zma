@@ -86,8 +86,8 @@ const CoursesPage = () => {
                         key={provider.id}
                         onClick={() => setSelectedProvider(provider.id)}
                         className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${selectedProvider === provider.id
-                                ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-lg shadow-cyan-500/20"
-                                : "bg-slate-800/50 text-slate-400 border border-white/10 hover:bg-slate-800"
+                            ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-lg shadow-cyan-500/20"
+                            : "bg-slate-800/50 text-slate-400 border border-white/10 hover:bg-slate-800"
                             }`}
                     >
                         {provider.name}
@@ -126,7 +126,7 @@ const CoursesPage = () => {
                                 <div
                                     key={course.id}
                                     className={`bg-slate-800/40 border ${providerStyle.border} rounded-2xl p-4 cursor-pointer active:scale-[0.98] transition-all`}
-                                    onClick={() => console.log("Navigate to course:", course.id)}
+                                    onClick={() => navigate(`/exams?courseId=${course.id}`)}
                                 >
                                     <div className="flex gap-3">
                                         {/* Thumbnail or Gradient Placeholder */}

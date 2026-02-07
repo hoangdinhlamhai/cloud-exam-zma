@@ -15,6 +15,8 @@ import LoginPage from "@/pages/login";
 import RegisterPage from "@/pages/register";
 import DashboardPage from "@/pages/home";
 import CoursesPage from "@/pages/courses";
+import ExamsPage from "@/pages/exams";
+import ExamPage from "@/pages/exam";
 
 const Layout = () => {
   return (
@@ -27,6 +29,8 @@ const Layout = () => {
             <Route path="/register" element={<RegisterPage />}></Route>
             <Route path="/home" element={<DashboardPage />}></Route>
             <Route path="/courses" element={<CoursesPage />}></Route>
+            <Route path="/exams" element={<ExamsPage />}></Route>
+            <Route path="/exam" element={<ExamPage />}></Route>
           </AnimationRoutes>
         </ZMPRouter>
       </SnackbarProvider>
