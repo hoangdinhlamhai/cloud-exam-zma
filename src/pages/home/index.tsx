@@ -4,15 +4,6 @@ import { Page, Box, Text, Icon, useNavigate } from "zmp-ui";
 // Menu Data
 const menuItems = [
     {
-        key: "certs",
-        icon: "zi-star-solid",
-        label: "Chứng chỉ",
-        desc: "Lộ trình AWS, Azure...",
-        color: "from-orange-400 to-amber-500",
-        shadow: "shadow-orange-500/20",
-        route: "/certs",
-    },
-    {
         key: "courses",
         icon: "zi-video-solid",
         label: "Khoá học",
@@ -110,7 +101,7 @@ const HomePage = () => {
                     {menuItems.map((item, idx) => (
                         <div
                             key={idx}
-                            className={`bg-slate-800/40 border border-white/5 p-4 rounded-2xl flex flex-col gap-3 group active:scale-95 transition-all duration-200 cursor-pointer ${idx === 0 ? 'col-span-2 flex-row items-center' : ''}`}
+                            className={"bg-slate-800/40 border border-white/5 p-4 rounded-2xl flex flex-col gap-3 group active:scale-95 transition-all duration-200 cursor-pointer"}
                             onClick={() => navigate(item.route)}
                         >
                             <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${item.color} ${item.shadow} flex items-center justify-center flex-shrink-0 group-hover:scale-110 transition-transform`}>
@@ -120,38 +111,10 @@ const HomePage = () => {
                                 <Text className="text-white font-bold text-base">{item.label}</Text>
                                 <Text className="text-slate-400 text-xs">{item.desc}</Text>
                             </div>
-                            {idx === 0 && (
-                                <div className="ml-auto w-8 h-8 rounded-full bg-white/10 flex items-center justify-center">
-                                    <Icon icon="zi-chevron-right" className="text-white text-sm" />
-                                </div>
-                            )}
+
                         </div>
                     ))}
                 </div>
-
-                {/* Recent Activity Section */}
-                <Box className="mt-8">
-                    <div className="flex justify-between items-center mb-4 px-2">
-                        <Text.Title className="text-white !text-lg !font-bold">Recent Activity</Text.Title>
-                        <Text className="text-cyan-400 text-sm font-medium">See All</Text>
-                    </div>
-
-                    <div className="space-y-3">
-                        {[1, 2].map((_, i) => (
-                            <div key={i} className="flex items-center gap-3 bg-slate-800/30 p-3 rounded-xl border border-white/5">
-                                <div className="w-2 h-10 rounded-full bg-cyan-500/20"></div>
-                                <div className="flex-1">
-                                    <Text className="text-white font-medium text-sm">AZ-900 Fundamentals</Text>
-                                    <Text className="text-slate-500 text-xs">Score: 85% • 2 hours ago</Text>
-                                </div>
-                                <div className="px-2 py-1 rounded bg-green-500/20 text-green-400 text-xs font-bold">
-                                    PASS
-                                </div>
-                            </div>
-                        ))}
-                    </div>
-                </Box>
-
             </Box>
         </Page>
     );

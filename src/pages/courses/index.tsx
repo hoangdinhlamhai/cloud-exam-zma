@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import { Page, Box, Text, Icon, Spinner, useNavigate } from "zmp-ui";
 import { courseService, Course } from "@/services/course";
 
@@ -18,8 +18,8 @@ const levelColors: Record<string, string> = {
     Specialty: "bg-pink-500/20 text-pink-400",
 };
 
-// Provider filter tabs
-const providers = [
+// Provider options
+const providerOptions = [
     { id: 0, name: "Tất cả" },
     { id: 1, name: "AWS" },
     { id: 2, name: "Azure" },
@@ -28,22 +28,20 @@ const providers = [
 
 const CoursesPage = () => {
     const navigate = useNavigate();
-    const [courses, setCourses] = useState<Course[]>([]);
+    const [allCourses, setAllCourses] = useState<Course[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [selectedProvider, setSelectedProvider] = useState(0);
+    const [selectedCourse, setSelectedCourse] = useState(0); // 0 = All courses
     const [error, setError] = useState<string | null>(null);
+    const [isProviderDropdownOpen, setIsProviderDropdownOpen] = useState(false);
+    const [isCourseDropdownOpen, setIsCourseDropdownOpen] = useState(false);
 
-    const fetchCourses = async (providerId?: number) => {
+    const fetchCourses = async () => {
         setIsLoading(true);
         setError(null);
         try {
-            if (providerId && providerId > 0) {
-                const data = await courseService.getByProvider(providerId);
-                setCourses(data);
-            } else {
-                const response = await courseService.getAll(1, 20);
-                setCourses(response.data);
-            }
+            const response = await courseService.getAll(1, 50); // Get all courses
+            setAllCourses(response.data);
         } catch (err: any) {
             setError(err.message || "Không thể tải khoá học");
             console.error("Fetch courses error:", err);
@@ -53,12 +51,43 @@ const CoursesPage = () => {
     };
 
     useEffect(() => {
-        fetchCourses(selectedProvider > 0 ? selectedProvider : undefined);
-    }, [selectedProvider]);
+        fetchCourses();
+    }, []);
+
+    // Filter courses based on selected provider and course
+    const filteredCourses = useMemo(() => {
+        let filtered = allCourses;
+
+        // Filter by provider (using providerId from course)
+        if (selectedProvider > 0) {
+            filtered = filtered.filter(c => c.provider.id === selectedProvider);
+        }
+
+        // Filter by specific course
+        if (selectedCourse > 0) {
+            filtered = filtered.filter(c => c.id === selectedCourse);
+        }
+
+        return filtered;
+    }, [allCourses, selectedProvider, selectedCourse]);
+
+    // Get course options for dropdown (filtered by provider if selected)
+    const courseOptions = useMemo(() => {
+        let courses = allCourses;
+        if (selectedProvider > 0) {
+            courses = courses.filter(c => c.provider.id === selectedProvider);
+        }
+        return [{ id: 0, title: "Tất cả chứng chỉ" }, ...courses];
+    }, [allCourses, selectedProvider]);
 
     const getProviderStyle = (providerName: string) => {
         return providerColors[providerName] || providerColors.default;
     };
+
+    const selectedProviderName = providerOptions.find(p => p.id === selectedProvider)?.name || "Tất cả";
+    const selectedCourseName = selectedCourse === 0
+        ? "Tất cả chứng chỉ"
+        : allCourses.find(c => c.id === selectedCourse)?.title || "Tất cả chứng chỉ";
 
     return (
         <Page className="bg-slate-900 flex flex-col min-h-screen relative overflow-hidden">
@@ -79,21 +108,102 @@ const CoursesPage = () => {
                 </div>
             </Box>
 
-            {/* Provider Filter Tabs */}
-            <Box className="px-4 py-3 flex gap-2 overflow-x-auto no-scrollbar">
-                {providers.map((provider) => (
+            {/* Filter Dropdowns */}
+            <Box className="px-4 py-3 flex flex-col gap-3">
+                {/* Provider Dropdown */}
+                <div className="relative flex-1">
                     <button
-                        key={provider.id}
-                        onClick={() => setSelectedProvider(provider.id)}
-                        className={`px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all ${selectedProvider === provider.id
-                            ? "bg-gradient-to-r from-cyan-400 to-blue-500 text-white shadow-lg shadow-cyan-500/20"
-                            : "bg-slate-800/50 text-slate-400 border border-white/10 hover:bg-slate-800"
-                            }`}
+                        onClick={() => {
+                            setIsProviderDropdownOpen(!isProviderDropdownOpen);
+                            setIsCourseDropdownOpen(false);
+                        }}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 flex items-center justify-between text-left"
                     >
-                        {provider.name}
+                        <div>
+                            <Text className="text-slate-500 text-xs">Nhà cung cấp</Text>
+                            <Text className="text-white text-sm font-medium">{selectedProviderName}</Text>
+                        </div>
+                        <Icon
+                            icon={isProviderDropdownOpen ? "zi-chevron-up" : "zi-chevron-down"}
+                            className="text-slate-400"
+                        />
                     </button>
-                ))}
+
+                    {/* Provider Dropdown Menu */}
+                    {isProviderDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl">
+                            {providerOptions.map((provider) => (
+                                <button
+                                    key={provider.id}
+                                    onClick={() => {
+                                        setSelectedProvider(provider.id);
+                                        setSelectedCourse(0); // Reset course filter when provider changes
+                                        setIsProviderDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-4 py-3 text-left text-sm transition-colors ${selectedProvider === provider.id
+                                        ? "bg-cyan-500/20 text-cyan-400"
+                                        : "text-white hover:bg-slate-700"
+                                        }`}
+                                >
+                                    {provider.name}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
+
+                {/* Course (Certificate) Dropdown */}
+                <div className="relative flex-1">
+                    <button
+                        onClick={() => {
+                            setIsCourseDropdownOpen(!isCourseDropdownOpen);
+                            setIsProviderDropdownOpen(false);
+                        }}
+                        className="w-full px-4 py-3 rounded-xl bg-slate-800/50 border border-white/10 flex items-center justify-between text-left"
+                    >
+                        <div className="flex-1 min-w-0">
+                            <Text className="text-slate-500 text-xs">Chứng chỉ</Text>
+                            <Text className="text-white text-sm font-medium truncate">{selectedCourseName}</Text>
+                        </div>
+                        <Icon
+                            icon={isCourseDropdownOpen ? "zi-chevron-up" : "zi-chevron-down"}
+                            className="text-slate-400 flex-shrink-0"
+                        />
+                    </button>
+
+                    {/* Course Dropdown Menu */}
+                    {isCourseDropdownOpen && (
+                        <div className="absolute top-full left-0 right-0 mt-2 bg-slate-800 border border-white/10 rounded-xl overflow-hidden z-50 shadow-xl max-h-64 overflow-y-auto">
+                            {courseOptions.map((course) => (
+                                <button
+                                    key={course.id}
+                                    onClick={() => {
+                                        setSelectedCourse(course.id);
+                                        setIsCourseDropdownOpen(false);
+                                    }}
+                                    className={`w-full px-4 py-3 text-left text-sm transition-colors ${selectedCourse === course.id
+                                        ? "bg-cyan-500/20 text-cyan-400"
+                                        : "text-white hover:bg-slate-700"
+                                        }`}
+                                >
+                                    <span className="line-clamp-1">{course.title}</span>
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                </div>
             </Box>
+
+            {/* Click overlay to close dropdowns */}
+            {(isProviderDropdownOpen || isCourseDropdownOpen) && (
+                <div
+                    className="fixed inset-0 z-40"
+                    onClick={() => {
+                        setIsProviderDropdownOpen(false);
+                        setIsCourseDropdownOpen(false);
+                    }}
+                />
+            )}
 
             {/* Content */}
             <Box className="flex-1 px-4 py-4 overflow-y-auto pb-20">
@@ -107,20 +217,20 @@ const CoursesPage = () => {
                         <Icon icon="zi-warning" className="text-red-400 text-4xl" />
                         <Text className="text-red-400 text-sm">{error}</Text>
                         <button
-                            onClick={() => fetchCourses(selectedProvider > 0 ? selectedProvider : undefined)}
+                            onClick={fetchCourses}
                             className="px-4 py-2 bg-slate-800 text-white rounded-lg text-sm"
                         >
                             Thử lại
                         </button>
                     </div>
-                ) : courses.length === 0 ? (
+                ) : filteredCourses.length === 0 ? (
                     <div className="flex flex-col items-center justify-center h-64 gap-3">
                         <Icon icon="zi-note" className="text-slate-500 text-4xl" />
                         <Text className="text-slate-400 text-sm">Không có khoá học nào</Text>
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {courses.map((course) => {
+                        {filteredCourses.map((course) => {
                             const providerStyle = getProviderStyle(course.provider.name);
                             return (
                                 <div

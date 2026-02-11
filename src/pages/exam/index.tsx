@@ -2,11 +2,14 @@ import React, { useEffect, useState, useCallback } from "react";
 import { Page, Box, Text, Icon, Spinner, Button, useNavigate, useSnackbar } from "zmp-ui";
 import { useSearchParams } from "zmp-ui";
 import { examService, Exam } from "@/services/exam";
-import { questionService, Question, CheckAnswerResponse } from "@/services/question";
+import { questionService, Question } from "@/services/question";
+import { examResultService, ExamSubmissionResponse, QuestionResult } from "@/services/examResult";
+import { noteService } from "@/services/note";
 
 // State for user answers
 type UserAnswers = Record<number, number>; // questionId -> answerId
-type AnswerResults = Record<number, CheckAnswerResponse>; // questionId -> check result
+type AnswerResults = Record<number, QuestionResult>; // questionId -> result
+type QuestionNotes = Record<number, string>; // questionId -> note content
 
 const ExamPage = () => {
     const navigate = useNavigate();
@@ -23,6 +26,11 @@ const ExamPage = () => {
     const [isSubmitted, setIsSubmitted] = useState(false);
     const [answerResults, setAnswerResults] = useState<AnswerResults>({});
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [submissionResult, setSubmissionResult] = useState<ExamSubmissionResponse | null>(null);
+    const [isQuestionDrawerOpen, setIsQuestionDrawerOpen] = useState(false);
+    const [questionNotes, setQuestionNotes] = useState<QuestionNotes>({});
+    const [openNoteId, setOpenNoteId] = useState<number | null>(null); // which question's note is open
+    const [isSavingNote, setIsSavingNote] = useState(false);
 
     const fetchExamData = useCallback(async () => {
         if (!examId) return;
@@ -57,6 +65,8 @@ const ExamPage = () => {
     };
 
     const handleSubmit = async () => {
+        if (!examId) return;
+
         const answeredCount = Object.keys(userAnswers).length;
         if (answeredCount < questions.length) {
             openSnackbar({
@@ -70,24 +80,31 @@ const ExamPage = () => {
 
         setIsSubmitting(true);
         try {
-            // Check all answers using the new API
-            const results: AnswerResults = {};
-            for (const question of questions) {
-                const answerId = userAnswers[question.id];
-                if (answerId) {
-                    const result = await questionService.checkAnswer(question.id, answerId);
-                    results[question.id] = result;
-                }
-            }
-            setAnswerResults(results);
+            // Convert userAnswers to array format for API
+            const answersArray = Object.entries(userAnswers).map(([questionId, answerId]) => ({
+                questionId: parseInt(questionId),
+                answerId,
+            }));
+
+            // Submit exam using the new examResultService
+            const result = await examResultService.submitExam(parseInt(examId), answersArray);
+            setSubmissionResult(result);
+
+            // Convert details array to map for easy lookup
+            const resultsMap: AnswerResults = {};
+            result.details.forEach((detail) => {
+                resultsMap[detail.questionId] = detail;
+            });
+            setAnswerResults(resultsMap);
             setIsSubmitted(true);
 
-            // Update questions with explanations from results
-            const updatedQuestions = questions.map(q => ({
-                ...q,
-                explanation: results[q.id]?.explanation || q.explanation,
-            }));
-            setQuestions(updatedQuestions);
+            // Show success message
+            openSnackbar({
+                icon: true,
+                text: `Nộp bài thành công! Điểm: ${result.score}%`,
+                type: result.score >= 70 ? "success" : "warning",
+                duration: 3000,
+            });
 
         } catch (err: any) {
             openSnackbar({
@@ -111,6 +128,49 @@ const ExamPage = () => {
     };
 
     const currentQuestion = questions[currentIndex];
+
+    const handleSaveNote = async (questionId: number) => {
+        const content = questionNotes[questionId];
+        if (!content?.trim()) return;
+
+        setIsSavingNote(true);
+        try {
+            await noteService.saveNote({
+                questionId,
+                content: content.trim(),
+            });
+            openSnackbar({
+                icon: true,
+                text: "Đã lưu ghi chú",
+                type: "success",
+                duration: 2000,
+            });
+            setOpenNoteId(null);
+        } catch (err: any) {
+            openSnackbar({
+                icon: true,
+                text: err.message || "Không thể lưu ghi chú",
+                type: "error",
+                duration: 3000,
+            });
+        } finally {
+            setIsSavingNote(false);
+        }
+    };
+
+    const handleDeleteNote = async (questionId: number) => {
+        setQuestionNotes((prev) => {
+            const next = { ...prev };
+            delete next[questionId];
+            return next;
+        });
+        openSnackbar({
+            icon: true,
+            text: "Đã xóa ghi chú",
+            type: "success",
+            duration: 2000,
+        });
+    };
 
     if (isLoading) {
         return (
@@ -276,6 +336,92 @@ const ExamPage = () => {
                                 </Text>
                             </div>
                         )}
+
+                        {/* Note Section */}
+                        <div className="mt-4">
+                            {/* Note Toggle Button */}
+                            <button
+                                className={`w-full flex items-center gap-2 px-4 py-3 rounded-xl border transition-all ${openNoteId === currentQuestion.id
+                                    ? "bg-amber-500/10 border-amber-500/30"
+                                    : questionNotes[currentQuestion.id]
+                                        ? "bg-amber-500/5 border-amber-500/20"
+                                        : "bg-slate-800/40 border-white/5 hover:border-white/10"
+                                    }`}
+                                onClick={() =>
+                                    setOpenNoteId(
+                                        openNoteId === currentQuestion.id ? null : currentQuestion.id
+                                    )
+                                }
+                            >
+                                <div className={`w-7 h-7 rounded-lg flex items-center justify-center ${questionNotes[currentQuestion.id]
+                                    ? "bg-amber-500/20"
+                                    : "bg-slate-700/50"
+                                    }`}>
+                                    <Icon
+                                        icon="zi-post"
+                                        className={questionNotes[currentQuestion.id] ? "text-amber-400" : "text-slate-400"}
+                                    />
+                                </div>
+                                <div className="flex-1 text-left">
+                                    <Text className={`text-sm font-medium ${questionNotes[currentQuestion.id] ? "text-amber-400" : "text-slate-400"
+                                        }`}>
+                                        {questionNotes[currentQuestion.id] ? "Xem ghi chú" : "Thêm ghi chú"}
+                                    </Text>
+                                </div>
+                                {questionNotes[currentQuestion.id] && (
+                                    <div className="w-2 h-2 rounded-full bg-amber-400"></div>
+                                )}
+                                <Icon
+                                    icon={openNoteId === currentQuestion.id ? "zi-chevron-up" : "zi-chevron-down"}
+                                    className="text-slate-500"
+                                />
+                            </button>
+
+                            {/* Note Editor (collapsible) */}
+                            {openNoteId === currentQuestion.id && (
+                                <div className="mt-2 bg-slate-800/40 border border-white/5 rounded-2xl p-4 space-y-3 animate-slideDown">
+                                    <textarea
+                                        className="w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 text-white text-sm placeholder-slate-500 resize-none focus:outline-none focus:border-amber-500/50 transition-colors"
+                                        rows={4}
+                                        placeholder="Ghi chú của bạn cho câu hỏi này..."
+                                        value={questionNotes[currentQuestion.id] || ""}
+                                        onChange={(e) =>
+                                            setQuestionNotes((prev) => ({
+                                                ...prev,
+                                                [currentQuestion.id]: e.target.value,
+                                            }))
+                                        }
+                                    />
+                                    <div className="flex items-center justify-between">
+                                        <Text className="text-slate-500 text-xs">
+                                            {(questionNotes[currentQuestion.id] || "").length} ký tự
+                                        </Text>
+                                        <div className="flex gap-2">
+                                            {questionNotes[currentQuestion.id] && (
+                                                <button
+                                                    className="px-3 py-1.5 rounded-lg bg-slate-700/50 text-slate-400 text-xs hover:bg-slate-700 transition-colors"
+                                                    onClick={() => handleDeleteNote(currentQuestion.id)}
+                                                >
+                                                    Xóa
+                                                </button>
+                                            )}
+                                            <button
+                                                className="px-3 py-1.5 rounded-lg bg-amber-500/20 text-amber-400 text-xs font-medium flex items-center gap-1"
+                                                onClick={() => handleSaveNote(currentQuestion.id)}
+                                                disabled={isSavingNote || !(questionNotes[currentQuestion.id]?.trim())}
+                                            >
+                                                {isSavingNote ? (
+                                                    <span className="text-amber-400 text-xs">...</span>
+                                                ) : (
+                                                    <Icon icon="zi-check" className="text-amber-400" />
+                                                )}
+                                                Lưu
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
                     </div>
                 )}
             </Box>
@@ -318,32 +464,123 @@ const ExamPage = () => {
                     )}
                 </div>
 
-                {/* Question Navigator (dots) */}
-                <div className="flex justify-center gap-1.5 mt-3 flex-wrap">
-                    {questions.map((q, idx) => {
-                        const isAnswered = userAnswers[q.id] !== undefined;
-                        const isCurrent = idx === currentIndex;
-                        const result = answerResults[q.id];
-
-                        let dotColor = "bg-slate-700";
-                        if (isSubmitted && result) {
-                            dotColor = result.isCorrect ? "bg-green-500" : "bg-red-500";
-                        } else if (isCurrent) {
-                            dotColor = "bg-cyan-400";
-                        } else if (isAnswered) {
-                            dotColor = "bg-cyan-600";
-                        }
-
-                        return (
-                            <div
-                                key={q.id}
-                                className={`w-2.5 h-2.5 rounded-full cursor-pointer transition-all ${dotColor} ${isCurrent ? "scale-125" : ""}`}
-                                onClick={() => setCurrentIndex(idx)}
-                            ></div>
-                        );
-                    })}
+                {/* Question Navigator Button */}
+                <div className="flex justify-center mt-3">
+                    <button
+                        className="flex items-center gap-2 px-4 py-2 bg-slate-800/80 border border-white/10 rounded-xl text-slate-300 text-sm"
+                        onClick={() => setIsQuestionDrawerOpen(true)}
+                    >
+                        <Icon icon="zi-list-1" className="text-cyan-400" />
+                        <span>Câu {currentIndex + 1}/{questions.length}</span>
+                        <span className="text-slate-500">•</span>
+                        <span className="text-cyan-400">{Object.keys(userAnswers).length} đã làm</span>
+                        <Icon icon="zi-chevron-up" className="text-slate-500" />
+                    </button>
                 </div>
             </Box>
+
+            {/* Question Drawer Overlay */}
+            {isQuestionDrawerOpen && (
+                <div
+                    className="fixed inset-0 bg-black/60 z-50 transition-opacity"
+                    onClick={() => setIsQuestionDrawerOpen(false)}
+                />
+            )}
+
+            {/* Question Drawer */}
+            <div
+                className={`fixed bottom-0 left-0 right-0 z-50 bg-slate-900 rounded-t-3xl border-t border-white/10 transition-transform duration-300 ${isQuestionDrawerOpen ? "translate-y-0" : "translate-y-full"
+                    }`}
+                style={{ maxHeight: "70vh" }}
+            >
+                {/* Drawer Handle */}
+                <div className="flex justify-center py-3">
+                    <div className="w-12 h-1.5 bg-slate-700 rounded-full"></div>
+                </div>
+
+                {/* Drawer Header */}
+                <div className="flex items-center justify-between px-4 pb-3 border-b border-white/5">
+                    <div>
+                        <Text className="text-white font-bold text-base">Danh sách câu hỏi</Text>
+                        <Text className="text-slate-400 text-xs">
+                            {Object.keys(userAnswers).length}/{questions.length} câu đã làm
+                        </Text>
+                    </div>
+                    <button
+                        className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center"
+                        onClick={() => setIsQuestionDrawerOpen(false)}
+                    >
+                        <Icon icon="zi-close" className="text-slate-400" />
+                    </button>
+                </div>
+
+                {/* Question Grid */}
+                <div className="p-4 overflow-y-auto" style={{ maxHeight: "calc(70vh - 100px)" }}>
+                    <div className="grid grid-cols-5 gap-2">
+                        {questions.map((q, idx) => {
+                            const isAnswered = userAnswers[q.id] !== undefined;
+                            const isCurrent = idx === currentIndex;
+                            const result = answerResults[q.id];
+
+                            let bgColor = "bg-slate-800 border-slate-700";
+                            let textColor = "text-slate-400";
+
+                            if (isSubmitted && result) {
+                                if (result.isCorrect) {
+                                    bgColor = "bg-green-500/20 border-green-500";
+                                    textColor = "text-green-400";
+                                } else {
+                                    bgColor = "bg-red-500/20 border-red-500";
+                                    textColor = "text-red-400";
+                                }
+                            } else if (isCurrent) {
+                                bgColor = "bg-cyan-500/20 border-cyan-400";
+                                textColor = "text-cyan-400";
+                            } else if (isAnswered) {
+                                bgColor = "bg-emerald-500/20 border-emerald-500";
+                                textColor = "text-emerald-400";
+                            }
+
+                            return (
+                                <button
+                                    key={q.id}
+                                    className={`aspect-square rounded-xl border-2 flex items-center justify-center font-bold text-sm transition-all active:scale-95 ${bgColor} ${textColor}`}
+                                    onClick={() => {
+                                        setCurrentIndex(idx);
+                                        setIsQuestionDrawerOpen(false);
+                                    }}
+                                >
+                                    {idx + 1}
+                                </button>
+                            );
+                        })}
+                    </div>
+
+                    {/* Legend */}
+                    <div className="flex items-center justify-center gap-4 mt-4 pt-4 border-t border-white/5">
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-slate-700"></div>
+                            <Text className="text-slate-500 text-xs">Chưa làm</Text>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                            <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+                            <Text className="text-slate-500 text-xs">Đã làm</Text>
+                        </div>
+                        {isSubmitted && (
+                            <>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-full bg-green-500"></div>
+                                    <Text className="text-slate-500 text-xs">Đúng</Text>
+                                </div>
+                                <div className="flex items-center gap-1.5">
+                                    <div className="w-3 h-3 rounded-full bg-red-500"></div>
+                                    <Text className="text-slate-500 text-xs">Sai</Text>
+                                </div>
+                            </>
+                        )}
+                    </div>
+                </div>
+            </div>
         </Page>
     );
 };

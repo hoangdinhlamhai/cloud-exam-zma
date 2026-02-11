@@ -5,8 +5,8 @@ import { authService } from "@/services/auth";
 const LoginPage = () => {
     const navigate = useNavigate();
     const { openSnackbar } = useSnackbar();
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
+    const [email, setEmail] = useState("lamhai@gmail.com");
+    const [password, setPassword] = useState("12345678");
     const [isLoading, setIsLoading] = useState(false);
 
     const handleLogin = async () => {
