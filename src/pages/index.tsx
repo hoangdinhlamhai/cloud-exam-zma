@@ -123,7 +123,7 @@ const LandingPage = () => {
               <div className="bg-gradient-to-r from-cyan-500/20 to-blue-500/20 border border-cyan-500/30 rounded-full px-4 py-1.5 flex items-center gap-2">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
                 <Text className="text-cyan-300 text-xs font-medium">
-                  2024's #1 Cloud Exam Platform
+                  2026's #1 Cloud Exam Platform
                 </Text>
               </div>
             </div>

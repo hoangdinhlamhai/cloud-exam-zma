@@ -1,5 +1,6 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Page, Box, Text, Icon, useNavigate } from "zmp-ui";
+import { profileService, UserProfile } from "@/services/profile";
 
 // Menu Data
 const menuItems = [
@@ -22,6 +23,15 @@ const menuItems = [
         route: "/exams",
     },
     {
+        key: "certs",
+        icon: "zi-list-1",
+        label: "Lộ trình",
+        desc: "Chứng chỉ AWS, Azure, GCP",
+        color: "from-orange-400 to-amber-500",
+        shadow: "shadow-orange-500/20",
+        route: "/certs",
+    },
+    {
         key: "history",
         icon: "zi-clock-2-solid",
         label: "Lịch sử",
@@ -39,17 +49,59 @@ const menuItems = [
         shadow: "shadow-emerald-500/20",
         route: "/notes",
     },
+    {
+        key: "profile",
+        icon: "zi-user-solid",
+        label: "Hồ sơ",
+        desc: "Thông tin cá nhân",
+        color: "from-rose-400 to-pink-500",
+        shadow: "shadow-rose-500/20",
+        route: "/profile",
+    },
 ] as const;
-
-// Fake User Data
-const user = {
-    name: "Minh Nguyen",
-    level: "Pro Member",
-    avatar: "M",
-};
 
 const HomePage = () => {
     const navigate = useNavigate();
+    const [profile, setProfile] = useState<UserProfile | null>(null);
+
+    // Try to get cached user from localStorage first for instant display
+    useEffect(() => {
+        try {
+            const cachedUser = localStorage.getItem("user");
+            if (cachedUser) {
+                const parsed = JSON.parse(cachedUser);
+                setProfile({
+                    id: parsed.id,
+                    email: parsed.email || "",
+                    fullName: parsed.fullName || null,
+                    avatarUrl: parsed.avatarUrl || null,
+                    createdAt: parsed.createdAt || "",
+                });
+            }
+        } catch { }
+
+        // Then fetch fresh data from API
+        const token = localStorage.getItem("token");
+        if (token) {
+            profileService.getProfile()
+                .then((data) => {
+                    setProfile(data);
+                    // Update cached user
+                    localStorage.setItem("user", JSON.stringify(data));
+                })
+                .catch((err) => {
+                    console.error("Failed to fetch profile:", err);
+                });
+        }
+    }, []);
+
+    const displayName = profile?.fullName || profile?.email || "User";
+    const initials = displayName
+        .split(" ")
+        .map((w) => w[0])
+        .slice(0, 2)
+        .join("")
+        .toUpperCase();
 
     return (
         <Page className="bg-slate-900 flex flex-col min-h-screen relative overflow-hidden">
@@ -59,17 +111,25 @@ const HomePage = () => {
 
             {/* Header Section */}
             <Box className="sticky top-0 z-50 px-4 py-2 bg-slate-900/80 backdrop-blur-md border-b border-white/5 flex justify-between items-center">
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-2 cursor-pointer" onClick={() => navigate("/profile")}>
                     <div className="w-10 h-10 rounded-full bg-gradient-to-br from-cyan-400 to-blue-500 p-0.5 shadow-lg shadow-cyan-500/20">
                         <div className="w-full h-full bg-slate-900 rounded-full flex items-center justify-center p-0.5">
-                            <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
-                                <span className="text-white font-bold text-sm">{user.avatar}</span>
-                            </div>
+                            {profile?.avatarUrl ? (
+                                <img
+                                    src={profile.avatarUrl}
+                                    alt={displayName}
+                                    className="w-full h-full rounded-full object-cover"
+                                />
+                            ) : (
+                                <div className="w-full h-full bg-gradient-to-br from-cyan-400 to-blue-500 rounded-full flex items-center justify-center">
+                                    <span className="text-white font-bold text-sm">{initials}</span>
+                                </div>
+                            )}
                         </div>
                     </div>
                     <div>
                         <Text className="text-slate-400 text-xs font-medium">Welcome back,</Text>
-                        <Text.Title className="text-white !text-base !font-bold">{user.name}</Text.Title>
+                        <Text.Title className="text-white !text-base !font-bold">{displayName}</Text.Title>
                     </div>
                 </div>
                 <div
@@ -121,3 +181,4 @@ const HomePage = () => {
 };
 
 export default HomePage;
+
